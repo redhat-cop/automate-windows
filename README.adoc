@@ -1,0 +1,5 @@
+= Automating Windows with Ansible
+
+This repository will contain code to automate specifically Windows, considering its specificities compared to Linux.
+
+Stay tuned...
