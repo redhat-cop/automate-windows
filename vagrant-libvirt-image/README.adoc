@@ -1,0 +1,141 @@
+= How to create a test Libvirt Windows box for Ansible
+Eric Lavarde <elavarde@redhat.com>
+v0.5 2018-07-27
+:toc:
+
+To the difference of Linux and other free system, you can't simply download Windows from Hashicorp's repositories. If you're using Vagrant with VirtualBox, you can at least download a Test VM from Microsoft, but you're out of luck with Libvirt. The following lines explain how to solve this issue and make your box "Ansible ready".
+
+
+== Prerequisites ==
+
+* a lot of diskspace:
+** 30 GBytes in `~/.vagrant`
+** 20 GBytes where you have your libvirt images (generally `/var/lib/libvirt/images`)
+* the approach surely works with other versions but here where the most relevant ones (on Fedora 28):
+** qemu-img-2.11.2-1.fc28.x86_64
+** libvirt-4.1.0-3.fc28.x86_64
+** virt-manager-1.5.1-1.fc28.noarch
+** vagrant-2.0.2-1.fc28.noarch
+** Vagrant plugins (installed via `vagrant plugin install`):
+*** vagrant-libvirt (0.0.43)
+*** winrm (2.2.3)
+*** winrm-elevated (1.1.0)
+*** winrm-fs (1.2.0)
+** ansible-2.6.1-1.fc28
+** python2-winrm-0.3.0-1.fc28 (and probably other Ansible module dependencies)
+
+
+== Create a Windows Libvirt Box ==
+
+. Go to https://developer.microsoft.com/en-us/microsoft-edge/tools/vms/[Microsoft's virtual machines Donwload site].
+. Select e.g. MSEdge on Win10 as Vagrant platform, and hover over the Download '.ZIP' button, you'll see a link which you can use to download the VM, e.g. https://az792536.vo.msecnd.net/vms/VMBuild_20180425/Vagrant/MSEdge/MSEdge.Win10.Vagrant.zip
+. we'll go to the command line and execute the following commands:
+
+[source,sh]
+------------------------------------------------------------------------
+mkdir -p ~/.vagrant.d/boxes/MSEdgeWin10/0/libvirt
+wget https://az792536.vo.msecnd.net/vms/VMBuild_20180425/Vagrant/MSEdge/MSEdge.Win10.Vagrant.zip                                                                      # <1>
+unzip MSEdge.Win10.Vagrant.zip
+tar xvzf MSEdge\ -\ Win10.box
+rm 'MSEdge\ -\ Win10.box'
+rm box.ovf                                                               # <2>
+cp ${GITDIR}/box/Vagrantfile .                                           # <6>
+qemu-img convert -p -O qcow2 -S 4k 'MSEdge - Win10-disk002.vmdk' box.img # <3>
+rm 'MSEdge - Win10-disk002.vmdk'
+cp ${GITDIR}/box/metadata.json .                                         # <6>
+qemu-img info box.img                                                    # <4>
+vim metadata.json                                                        # <5>
+------------------------------------------------------------------------
+<1> the resulting zip file is roughly 4.3GB big
+<2> I studied it before to adapt my Vagrantfile, e.g. the network card
+<3> the resulting image is roughly 9GB big
+<4> note down the virtual size in GB
+<5> adapt the virtual size parameter accordingly
+<6> the files are available as link:box/Vagrantfile[box/Vagrantfile] and link:box/metadata.json[box/metadata.json]
+
+TIP: we could call `tar cvzf --sparse .../MSEdgeWin10Libvirt.0.box box.img metadata.json Vagrantfile` and create a "real" box that we could install somewhere else using `vagrant box add /var/tmp/MSEdgeWin10Libvirt.0.box --name MSEdgeWin10 [--force]`.
+
+
+== Make the Windows box Ansible ready ==
+
+After the last chapter, we can start the box:
+
+[source,sh]
+------------------------------------------------------------------------
+mkdir emptydir
+cd emptydir
+vagrant init MSEdgeWin10                       # <1>
+cp ${GITDIR}/Vagrantfile.example Vagrantfile   # <1>
+cp ${GITDIR}/playbook-provision-windows.yml .  # <2>
+vagrant up
+------------------------------------------------------------------------
+<1> either one of both, and adapt to your needs the link:Vagrantfile.example[Vagrantfile]
+<2> you may also adapt link:playbook-provision-windows.yml[playbook-provision-windows.yml] but it's just for showing provisioning here
+
+. The start principally works, even if Vagrant is stuck on the connection to "SSH" failing (the libvirt provider confuses SSH with WinRM and we haven't yet enabled WinRM). Do _not_ interrupt Vagrant.
+. Open the Virtual Machine Manager, you'll see after a while a black screen with a mouse pointer, just reboot once the VM using the manager and it'll look better.
+. You then possibly need to login as _*IEUser*_ with password _*Passw0rd!*_.
+. In the Windows menu search for "PowerShell", you'll find (hopefully) _*Windows PowerShell (desktop app)*_, right click on it and _*Run as administrator*_.
+. Use the console to call as described under https://docs.ansible.com/ansible/latest/user_guide/windows_setup.html#winrm-setup[WinRM setup]:
++
+[source,PowerShell]
+------------------------------------------------------------------------
+$url = "https://raw.githubusercontent.com/ansible/ansible/devel/examples/scripts/ConfigureRemotingForAnsible.ps1"
+$file = "$env:temp\ConfigureRemotingForAnsible.ps1"
+
+(New-Object -TypeName System.Net.WebClient).DownloadFile($url, $file)
+
+powershell.exe -ExecutionPolicy ByPass -File $file
+------------------------------------------------------------------------
++
+TIP: instead of typing this you can search for `ansible windows_setup` using the Edge browser, the URL above should be one of the first hits, click it and copy and paste the code from the browser into the PowerShell console.
++
+. Calling `winrm enumerate winrm/config/Listener` should then be successful
++
+NOTE: if you're fast enough even the provisioning will work in Vagrant and you'll see a ping pong; if not, you only have to `vagrant halt` the VM and `vagrant up --provision` it again. Be patient, booting takes a few minutes.
++
+. Trying a few ansible commands using Vagrant's own inventory file:
++
+[source,sh]
+------------------------------------------------------------------------
+echo -e '[defaults]\ninventory=.vagrant/provisioners/ansible/inventory/vagrant_ansible_inventory' > ansible.cfg
+ansible -m win_ping default
+ansible -m setup default
+ansible -m win_whoami default
+ansible -m win_whoami default -b
+ansible -m win_shell -a 'winrm enumerate winrm/config/Listener' default
+------------------------------------------------------------------------
+
+
+== Final boxing of the Ansible ready Windows ==
+
+Stop the VM with `vagrant halt`, then go to a directory with temporarily enough space for the size of the image (16G in my case) and call the following command:
+
+[source,sh]
+------------------------------------------------------------------------
+mkdir -p ~/.vagrant.d/boxes/MSEdgeWin10/1/libvirt
+cd ~/.vagrant.d/boxes/MSEdgeWin10/1/libvirt
+sudo cp /var/lib/libvirt/images/MSEdgeWin10_default.img box.img
+sudo qemu-img rebase -p -b '' box.img
+sudo chown $(id -un).$(id -un) box.img
+cp ../../0/libvirt/Vagrantfile .
+cp ../../0/libvirt/metadata.json .
+------------------------------------------------------------------------
+
+CAUTION: initially I've used the script `~/.vagrant.d/gems/2.5.1/gems/vagrant-libvirt-0.0.43/tools/create_box.sh` to create a box and then install it, but it's really timely inefficient and requires even more disk space, so I've analyzed the script and it should amount to the above commands; this said, it's rather untested and feedback is more than welcome.
+
+You can then either:
+
+- remove the 0-version directory and move 1 to 0
+- or keep both versions and create `~/.vagrant.d/boxes/MSEdgeWin10/metadata_url` with any dummy content e.g. `https://atlas.hashicorp.com/microsoft/windows`, `vagrant up` complains but it doesn't matter and we can have multiple versions of the same image.
+
+Call then:
+
+. `vagrant destroy`
+. if you've worked solely with the 0-version, then you need to manually delete `/var/lib/libvirt/images/MSEdgeWin10_vagrant_box_image_0.img`.
+. `vagrant up`.
+. provisioning with Ansible should now work out of the _box_...
+
+TODO:: reduce the size of the image, which became bigger, e.g. see https://pve.proxmox.com/wiki/Shrink_Qcow2_Disk_Files with sdelete and simple conversion using `qemu-img convert old new`.
+
+Based on the created image, you can now do all kind of fancy Ansible-automation on Windows; tell us about your experience.

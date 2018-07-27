@@ -1,0 +1,17 @@
+Vagrant.configure("2") do |config|
+  config.vm.provider :libvirt do |libvirt|
+    libvirt.disk_bus = 'ide'
+    libvirt.nic_model_type = 'e1000'
+    libvirt.loader = '/usr/share/edk2/ovmf/OVMF_CODE.fd' # from package edk2-ovmf
+    libvirt.memory = 2048
+  end
+  config.vm.guest = :windows
+  config.vm.communicator = "winrm"
+  config.vm.boot_timeout = 600
+  config.vm.graceful_halt_timeout = 600
+  config.winrm.username = "IEUser"
+  config.winrm.password = "Passw0rd!"
+  config.winrm.transport = :ssl
+  config.winrm.basic_auth_only = true
+  config.winrm.ssl_peer_verification = false
+end

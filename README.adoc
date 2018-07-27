@@ -1,5 +1,5 @@
 = Automating Windows with Ansible
 
-This repository will contain code to automate specifically Windows, considering its specificities compared to Linux.
+This repository will contain code to automate specifically Windows, considering its specificities compared to Linux:
 
-Stay tuned...
+- link:vagrant-libvirt-image/[How to create an Ansible ready Windows Vagrant box for Libvirt] - if possible, all other activities should be based on this box, so that everybody can easily test it.

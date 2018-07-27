@@ -1,0 +1,6 @@
+---
+- name: a more than minimal provisioning playbook to show that Ansible works in Vagrant
+  hosts: all
+  gather_facts: false
+  tasks:
+  - win_ping:
