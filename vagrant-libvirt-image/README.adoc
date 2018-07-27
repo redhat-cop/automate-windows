@@ -34,7 +34,7 @@ To the difference of Linux and other free system, you can't simply download Wind
 [source,sh]
 ------------------------------------------------------------------------
 mkdir -p ~/.vagrant.d/boxes/MSEdgeWin10/0/libvirt
-wget https://az792536.vo.msecnd.net/vms/VMBuild_20180425/Vagrant/MSEdge/MSEdge.Win10.Vagrant.zip                                                                      # <1>
+wget https://az792536.vo.msecnd.net/vms/VMBuild_20180425/Vagrant/MSEdge/MSEdge.Win10.Vagrant.zip # <1>
 unzip MSEdge.Win10.Vagrant.zip
 tar xvzf MSEdge\ -\ Win10.box
 rm 'MSEdge\ -\ Win10.box'
@@ -71,6 +71,8 @@ vagrant up
 ------------------------------------------------------------------------
 <1> either one of both, and adapt to your needs the link:Vagrantfile.example[Vagrantfile]
 <2> you may also adapt link:playbook-provision-windows.yml[playbook-provision-windows.yml] but it's just for showing provisioning here
+
+Then:
 
 . The start principally works, even if Vagrant is stuck on the connection to "SSH" failing (the libvirt provider confuses SSH with WinRM and we haven't yet enabled WinRM). Do _not_ interrupt Vagrant.
 . Open the Virtual Machine Manager, you'll see after a while a black screen with a mouse pointer, just reboot once the VM using the manager and it'll look better.
