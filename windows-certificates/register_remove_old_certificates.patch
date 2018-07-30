@@ -1,0 +1,40 @@
+diff --git a/windows-certificates/roles/change_client_cert/templates/complex-register-client-cert.ps1 b/windows-certificates/roles/change_client_cert/templates/complex-register-client-cert.ps1
+index 0720f10..fa4127d 100644
+--- a/windows-certificates/roles/change_client_cert/templates/complex-register-client-cert.ps1
++++ b/windows-certificates/roles/change_client_cert/templates/complex-register-client-cert.ps1
+@@ -64,6 +64,8 @@ if($?){
+     $mail_body=$mail_subject
+ {% endif %}
+   }
++  Get-ChildItem Cert:\LocalMachine\TrustedPeople | where-Object  { $_.Thumbprint -ne $thumbprint -and $_.Subject -eq 'CN={{ win_cert_user_name }}' } | remove-item
++  Get-ChildItem Cert:\LocalMachine\root | where-Object  { $_.Thumbprint -ne $thumbprint -and $_.Subject -eq 'CN={{ win_cert_user_name }}' } | remove-item
+ {% if mail_server is defined and mail_server %}
+ } else {
+     if($error[0] -match "The WS-Management service cannot create the resource because it already exists") {
+diff --git a/windows-certificates/roles/change_server_cert/templates/new-register-server-cert.ps1 b/windows-certificates/roles/change_server_cert/templates/new-register-server-cert.ps1
+index 72f120b..5285592 100644
+--- a/windows-certificates/roles/change_server_cert/templates/new-register-server-cert.ps1
++++ b/windows-certificates/roles/change_server_cert/templates/new-register-server-cert.ps1
+@@ -43,10 +43,20 @@ If ($httpsListener)
+ New-WSManInstance -ResourceURI 'winrm/config/Listener' -SelectorSet $selectorset -ValueSet $valueset
+ if($?) {
+     echo "Successfully installed new ThumbPrint: $thumbprint"
++    Get-ChildItem Cert:\LocalMachine\My | where-Object  { $_.Thumbprint -ne $thumbprint } | remove-item
++    if($?) {
++        echo "Successfully removed old certificates"
+ {% if mail_server is defined and mail_server %}
+-    $mail_subject="Ansible: Change_Server_Cert: Success on adding server certificate to WinRM on $env:computername, ThumbPrint: $thumbprint"
+-    $mail_body=$mail_subject
++        $mail_subject="Ansible: Change_Server_Cert: Success on adding server certificate to WinRM on $env:computername, ThumbPrint: $thumbprint and removing old ones"
++        $mail_body=$mail_subject
+ {% endif %}
++    } else {
++        echo "Failed to remove old certificates"
++{% if mail_server is defined and mail_server %}
++        $mail_subject="Ansible: Change_Server_Cert: Success on adding server certificate to WinRM on $env:computername, ThumbPrint: $thumbprint but error on removing old certificates"
++        $mail_body=$mail_subject
++{% endif %}
++    }
+ } else {
+     echo "Failed to install new ThumbPrint: $thumbprint"
+     if($oldThumbprint) {

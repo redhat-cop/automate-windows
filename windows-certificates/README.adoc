@@ -87,3 +87,6 @@ ansible_winrm_cert_pem=certs.local.d/client_certificates/current_certificates/op
 ansible_winrm_transport=certificate
 ------------------------------------------------------------------------
 
+== Notes ==
+
+The patch link:register_remove_old_certificates.patch[register_remove_old_certificates.patch] adds instructions to the registration scripts to make sure that other certificates are removed after the new one has been added. This should work but could possibly have negative side effects if other processes than Ansible require certificates, hence it is provided only as untested patch.
