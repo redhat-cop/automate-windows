@@ -1,6 +1,8 @@
 = Steps to create and use certificates for Windows Ansible communication
 Eric Lavarde <elavarde@redhat.com>
-v0.2, 2018-07-30
+v0.3, 2018-07-30
+
+The following approach shows how to use certificates to secure the WinRM communication used by Ansible. Such an approach might be required for environments without an Active Directory (AD) and wanting to avoid using a too simple user/password based security.
 
 == Prepare ==
 

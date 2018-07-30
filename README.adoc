@@ -3,3 +3,4 @@
 This repository will contain code to automate specifically Windows, considering its specificities compared to Linux:
 
 - link:vagrant-libvirt-image/[How to create an Ansible ready Windows Vagrant box for Libvirt] - if possible, all other activities should be based on this box, so that everybody can easily test it.
+- link:windows-certificates/[Using certificates to connect via WinRM] - useful for Windows environments without Active Directory (AD) but where passwords are not acceptable
