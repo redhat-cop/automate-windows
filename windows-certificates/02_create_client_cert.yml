@@ -1,0 +1,20 @@
+---
+
+- name: create first a user certificate on localhost
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+  - cert_vars.local.yml
+  tasks:
+  - name: create first a user certificate if it doesn't yet exist
+    command: >
+      roles/change_client_cert/files/create_client_openssl_cert.sh
+        {{ local_certs_dir }} {{ win_cert_user_name }}
+    creates: "{{ local_certs_dir }}/client_certificates/current_certificates/openssl_cert_key_new.pem"
+
+- hosts: grp_windows
+  gather_facts: false
+  vars_files:
+  - cert_vars.local.yml
+  roles:
+  - change_client_cert

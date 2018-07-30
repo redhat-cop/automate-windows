@@ -1,0 +1,52 @@
+---
+
+#- name: Check for existing certificate
+#  stat:
+#    path: "{{ local_certs_dir }}/server_certificates/ssl/{{ ansible_ssh_host | default(ansible_host) }}/server.pfx"
+#  register: existing_certificate
+#  delegate_to: localhost
+#
+#- name: Set validation to ignore if certificate is not yet generated
+#  set_fact:
+#    ansible_winrm_server_cert_validation: ignore
+#  when: not existing_certificate.stat.exists
+#
+#- name: Create and sign server certificate for {{ ansible_ssh_host | default(ansible_host) }}
+#  local_action: script create_signed_server_openssl_cert.sh {{ local_certs_dir }} {{ ansible_ssh_host | default(ansible_host) }}
+#  args:
+#    creates: "{{ local_certs_dir }}/server_certificates/ssl/{{ ansible_ssh_host | default(ansible_host) }}/server.pfx"
+
+- name: Create target directory
+  win_file:
+    path: '{{ remote_certs_dir }}'
+    state: directory
+
+- name: Copy certificate and keyfile
+  win_copy:
+    src: '{{ local_certs_dir }}/server_certificates/ssl/{{ ansible_ssh_host | default(ansible_host) }}/server.pfx'
+    dest: '{{remote_certs_dir}}\server.pfx'
+
+- name: Copy register-server-cert.ps1
+  win_template:
+    src: '{{ win_server_register_type }}-register-server-cert.ps1'
+    dest: '{{remote_certs_dir}}\register-server-cert.ps1'
+
+- name: Copy register-scheduledtask_register-server-cert.ps1 that creates scheduled task
+  win_template:
+    src: register-scheduledtask_register-server-cert.ps1
+    dest: '{{remote_certs_dir}}\register-scheduledtask_register-server-cert.ps1'
+
+- name: Execute register-server-cert.ps1 as scheduled task
+  win_shell: '{{remote_certs_dir}}\register-scheduledtask_register-server-cert.ps1'
+
+#- name: Remove scheduled task
+#  win_shell: 'unregister-scheduledtask -taskname register-server-cert -confirm:$false'
+
+#- name: Remove files
+#  win_file:
+#    path: '{{remote_certs_dir}}\{{item}}'
+#    state: absent
+#  with_items:
+#    - register-scheduledtask_register-server-cert.ps1
+#    - register-server-cert.ps1
+#    - server.pfx

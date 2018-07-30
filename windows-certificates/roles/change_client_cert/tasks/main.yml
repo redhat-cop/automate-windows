@@ -1,0 +1,52 @@
+---
+
+# Change_Client_Cert
+
+- name: Check for new certificate
+  local_action: stat path={{ local_certs_dir }}/client_certificates/current_certificates/openssl_cert_new.pem
+  register: existing_new_certificate
+
+#- name: Set validation to ignore if certificate is not yet generated
+#  set_fact:
+#    ansible_winrm_server_cert_validation: ignore
+#  when: not existing_certificate.stat.exists
+
+- name: Create target directory
+  win_file:
+    path: '{{ remote_certs_dir }}'
+    state: directory
+
+- name: Copy certificate and keyfile
+  win_copy:
+    src: '{{ local_certs_dir }}/client_certificates/current_certificates/openssl_cert_new.pem'
+    dest: '{{remote_certs_dir}}\openssl_cert.pem'
+  when: existing_new_certificate.stat.exists
+
+- name: Copy register-client-cert.ps1
+  win_template:
+    src: "{{ win_user_register_type }}-register-client-cert.ps1"
+    dest: '{{remote_certs_dir}}\register-client-cert.ps1'
+  when: existing_new_certificate.stat.exists
+
+- name: Copy register-scheduledtask_register-client-cert.ps1 that creates scheduled task
+  win_template:
+    src: register-scheduledtask_register-client-cert.ps1
+    dest: '{{remote_certs_dir}}\register-scheduledtask_register-client-cert.ps1'
+  when: existing_new_certificate.stat.exists
+
+- name: Execute register-client-cert.ps1 as scheduled task
+  win_shell: '{{remote_certs_dir}}\register-scheduledtask_register-client-cert.ps1'
+  when: existing_new_certificate.stat.exists
+
+#- name: Remove scheduled task
+#  win_shell: 'unregister-scheduledtask -taskname register-client-cert -confirm:$false'
+#  when: existing_new_certificate.stat.exists
+
+#- name: Remove files
+#  win_file:
+#    path: '{{remote_certs_dir}}\{{item}}'
+#    state: absent
+#  with_items:
+#    - register-scheduledtask_register-client-cert.ps1
+#    - register-client-cert.ps1
+#    - openssl_cert.pem

@@ -1,0 +1,26 @@
+---
+
+# Note: ansible_ssh_host resp. ansible_host is assumed to contain an IP-Address
+
+- name: create first server certificates on localhost
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  vars_files:
+  - cert_vars.local.yml
+  tasks:
+  - name: create first a server certificate if it doesn't yet exist
+    command: >
+      roles/change_server_cert/files/create_signed_server_openssl_cert.sh
+        {{ local_certs_dir }}
+        {{ hostvars[item]['ansible_ssh_host'] | default(hostvars[item]['ansible_host']) }}
+    args:
+      creates: "{{ local_certs_dir }}/server_certificates/ssl/{{ hostvars[item]['ansible_ssh_host'] | default(hostvars[item]['ansible_host']) }}/server.pfx"
+    with_items: "{{ groups['grp_windows'] }}"
+
+- hosts: grp_windows
+  gather_facts: false
+  vars_files:
+  - cert_vars.local.yml
+  roles:
+  - change_server_cert

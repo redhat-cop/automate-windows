@@ -1,0 +1,89 @@
+= Steps to create and use certificates for Windows Ansible communication
+Eric Lavarde <elavarde@redhat.com>
+v0.2, 2018-07-30
+
+== Prepare ==
+
+This proof of concept is based on the setup of an environment as described in link:../vagrant-libvirt-image/[vagrant-libvirt-image] but should work on any equivalent Windows environment.
+
+- Copy `cert_vars.example.yml` to `cert_vars.local.yml` and adapt to your local needs, following the comments in the file.
+- Copy `inventory_example.cfg` to `inventory_local.cfg` and adapt to your local needs, especially the IP address needs to be adapted.
+
+We assume in the following lines that the defaults are used mostly unchanged.
+
+== Create Root CA ==
+
+Call only once and answer the questions interactively in order to create a Root CA and make it known to your host system:
+
+------------------------------------------------------------------------
+./00_create_root_ca.sh certs.local.d # aka {{ local_certs_dir }}
+sudo cp certs.local.d/ca/rootCA.pem \
+	/etc/pki/ca-trust/source/anchors/DemoAnsible_rootCA.pem
+sudo update-ca-trust
+sudo dnf install python2-certifi ca-certificates
+------------------------------------------------------------------------
+
+NOTE: the last 3 lines are specific to Red Hat systems (or even Fedora) and might need adaptation to your system.
+
+CAUTION: it is recommended to remove the anchor and call again `update-ca-trust` once you're finished with your tests.
+
+WARNING: the certifi Python module installed in the https://docs.ansible.com/ansible-tower/latest/html/upgrade-migration-guide/virtualenv.html[virtualenv of Ansible Tower] doesn't use the system's trust store but it's own, so you might need to work with `ansible_winrm_ca_trust_path`, or another workaround (I'm not sure the variable worked as I tried it quickly).
+
+FIXME:: make the Root CA creation non-interactive and idempotent to allow for automation (low prio).
+
+== Create a server certificate ==
+
+Create and deploy a server certificate:
+
+------------------------------------------------------------------------
+ansible-playbook 01_create_server_cert.yml
+------------------------------------------------------------------------
+
+On Windows, go to whichever is the remote directory and call `.\register-server-cert.ps1` as Administrator.
+
+TODO:: automate the server registration step and get rid of the scheduler which runs too late for sensible tests.
+
+After that you should be able to comment the variable `ansible_winrm_server_cert_validation=ignore` from the inventory and Ansible will still work.
+
+== Create one client certificate ==
+
+Create and deploy a client certificate:
+
+------------------------------------------------------------------------
+ansible-playbook 02_create_client_cert.yml
+------------------------------------------------------------------------
+
+The result should be something like:
+
+------------------------------------------------------------------------
+certs.local.d/
+certs.local.d/ca
+certs.local.d/ca/rootCA.key
+certs.local.d/ca/rootCA.pem
+certs.local.d/server_certificates
+certs.local.d/server_certificates/ssl
+certs.local.d/server_certificates/ssl/192.168.121.253
+certs.local.d/server_certificates/ssl/192.168.121.253/server.key
+certs.local.d/server_certificates/ssl/192.168.121.253/server.csr
+certs.local.d/server_certificates/ssl/192.168.121.253/server.crt
+certs.local.d/server_certificates/ssl/192.168.121.253/server.pem
+certs.local.d/server_certificates/ssl/192.168.121.253/server.pfx
+certs.local.d/client_certificates
+certs.local.d/client_certificates/current_certificates
+certs.local.d/client_certificates/current_certificates/openssl_cert_key_new.pem
+certs.local.d/client_certificates/current_certificates/openssl_cert_new.pem
+certs.local.d/client_certificates/old_certificates
+------------------------------------------------------------------------
+
+On Windows, go to whichever is the remote directory and call `.\register-client-cert.ps1` as Administrator.
+
+TODO:: automate the client registration step and get rid of the scheduler which runs too late for sensible tests.
+
+After that you should be able to comment the `ansible_password` variable and uncomment the following lines in the inventory, and ansible should still be working:
+
+------------------------------------------------------------------------
+ansible_winrm_cert_key_pem=certs.local.d/client_certificates/current_certificates/openssl_cert_key_new.pem
+ansible_winrm_cert_pem=certs.local.d/client_certificates/current_certificates/openssl_cert_new.pem
+ansible_winrm_transport=certificate
+------------------------------------------------------------------------
+

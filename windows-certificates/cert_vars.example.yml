@@ -1,0 +1,31 @@
+# Copy this file to cert_vars.local.yml and adapt it to your needs
+
+# folder to copy stuff on the target server
+remote_certs_dir: C:\WINDOWS\TEMP\CERTS
+
+# folder to put certificates on the Ansible control host
+local_certs_dir: certs.local.d
+
+# the name of the Windows user which will get a certificate
+win_cert_user_name: IEUser
+
+# the default password of this user
+win_cert_user_password: "Passw0rd!"
+
+# if set to true, the password of the user will be set to something random after
+# the user certificate has been applied.
+# be sure that the procedure works before you do this!
+win_scramble_password: false
+
+# the type of registration to use for user certificates: simple or complex
+# drives which script is used to do the registration
+win_user_register_type: simple
+
+# the type of registration to use for server certificates: old or new (starting with Win2012)
+# drives which script is used to do the registration
+win_server_register_type: new
+
+# Uncomment those lines if you want the playbook to send an e-mail if a certificate is changed (also in failure case)
+#mail_recipient: 'recipient@example.com'
+#mail_sender: 'sender@example.com'
+#mail_server: smtp.example.com
