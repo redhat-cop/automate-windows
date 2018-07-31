@@ -4,6 +4,8 @@ v0.3, 2018-07-30
 
 The following approach shows how to use certificates to secure the WinRM communication used by Ansible. Such an approach might be required for environments without an Active Directory (AD) and wanting to avoid using a too simple user/password based security.
 
+It is based on work developed by https://github.com/sdirbach[sdirbach] for one customer (Windows 2016), extended for another customer (Windows 2008R2, only the server certificate worked), then adapted to work as well for Windows 10 for test and demo purposes.
+
 == Prepare ==
 
 This proof of concept is based on the setup of an environment as described in link:../vagrant-libvirt-image/[vagrant-libvirt-image] but should work on any equivalent Windows environment.
